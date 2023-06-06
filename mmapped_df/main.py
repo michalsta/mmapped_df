@@ -6,14 +6,24 @@ import mmap
 import os
 
 class DatasetWriter:
-    def __init__(self, path : Path | str):
+    def __init__(self, path: Path | str, append_ok: bool = False):
         self.files = None
         self.colnames = None
         self.dtypes = None
         self.path = Path(path)
-        self.path.mkdir(parents=True, exist_ok=False)
+        self.path.mkdir(parents=True, exist_ok=append)
+        if append_ok and (self.path / "scheme.pickle").exists:
+            df = pd.read_pickle(path / 'scheme.pickle')
+            self.files = []
+            self.colnames = []
+            self.dtypes = []
+            for idx, colname in enumerate(df):
+                self.files.append(open(self.path / f"{idx}.bin", "ab"))
+                self.colnames.append(self.colname)
+                self.dtypes.append(df[colname].values.dtype)
 
-    def _set_schema(self, like : pd.DataFrame):
+
+    def _set_schema(self, like: pd.DataFrame):
         assert self.files is None
         self.files = []
         self.colnames = []
