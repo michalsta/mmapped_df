@@ -28,10 +28,14 @@ class DatasetWriter:
             self.dtypes.append(dtype)
         pd.DataFrame(types).to_pickle(self.path / 'scheme.pickle')
 
-    def __del__(self):
+    def close(self):
         if self.files is not None:
             for file in self.files:
                 file.close()
+        self.files = None
+
+    def __del__(self):
+        self.close()
 
     def append_df(self, df):
         if self.files is None:
@@ -42,8 +46,26 @@ class DatasetWriter:
             assert column.values.dtype == self.dtypes[idx]
             self.files[idx].write(column.values.tobytes())
 
+    def flush(self):
+        for file in self.files:
+            file.flush()
 
-def open_dataset(path : Path | str):
+    def append(self, **kwargs):
+        for file, dtype, colname in zip(self.files, self.dtypes, self.colnames):
+            dat = dtype.type(kwargs[colname])
+            file.write(dat.tobytes())
+
+    def append_dct(self, D)
+        return self.append(**D)
+
+    def append_list(self, L):
+        assert len(L) == len(self.files)
+        for data, file, dtype in zip(L, self.files, self.dtypes):
+            dat = dtype.type(data)
+            file.write(dat.tobytes())
+
+
+def open_dataset(path: Path | str):
     path = Path(path)
     df = pd.read_pickle(path / 'scheme.pickle')
 
