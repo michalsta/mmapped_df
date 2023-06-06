@@ -1,9 +1,10 @@
+import mmap
+import os
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import mmap
-import os
+
 
 class DatasetWriter:
     def __init__(self, path: Path | str, append_ok: bool = False):
@@ -13,7 +14,7 @@ class DatasetWriter:
         self.path = Path(path)
         self.path.mkdir(parents=True, exist_ok=append)
         if append_ok and (self.path / "scheme.pickle").exists:
-            df = pd.read_pickle(path / 'scheme.pickle')
+            df = pd.read_pickle(path / "scheme.pickle")
             self.files = []
             self.colnames = []
             self.dtypes = []
@@ -21,7 +22,6 @@ class DatasetWriter:
                 self.files.append(open(self.path / f"{idx}.bin", "ab"))
                 self.colnames.append(self.colname)
                 self.dtypes.append(df[colname].values.dtype)
-
 
     def _set_schema(self, like: pd.DataFrame):
         assert self.files is None
@@ -36,7 +36,7 @@ class DatasetWriter:
             dtype = like[colname].values.dtype
             types[colname] = np.empty(dtype=dtype, shape=0)
             self.dtypes.append(dtype)
-        pd.DataFrame(types).to_pickle(self.path / 'scheme.pickle')
+        pd.DataFrame(types).to_pickle(self.path / "scheme.pickle")
 
     def close(self):
         if self.files is not None:
@@ -65,7 +65,7 @@ class DatasetWriter:
             dat = dtype.type(kwargs[colname])
             file.write(dat.tobytes())
 
-    def append_dct(self, D)
+    def append_dct(self, D):
         return self.append(**D)
 
     def append_list(self, L):
@@ -77,7 +77,7 @@ class DatasetWriter:
 
 def open_dataset(path: Path | str):
     path = Path(path)
-    df = pd.read_pickle(path / 'scheme.pickle')
+    df = pd.read_pickle(path / "scheme.pickle")
 
     new_data = {}
     for idx, column_name in enumerate(df):
