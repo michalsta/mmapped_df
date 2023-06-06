@@ -86,4 +86,4 @@ def open_dataset(path: Path | str):
         mmap_obj = mmap.mmap(fd, 0, prot=mmap.PROT_READ)
         new_data[column_name] = np.frombuffer(mmap_obj, dtype=col_dtype)
 
-    return pd.DataFrame(new_data)
+    return pd.DataFrame(new_data, copy=False)
