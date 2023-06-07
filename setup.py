@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 from setuptools import setup, find_packages
+from glob import glob
+
 
 setup(
     name='mmapped_df',
@@ -10,4 +12,5 @@ setup(
     description='Memory-mapped, on-disk pandas df',
     packages=find_packages(),    
     install_requires=['numpy', 'pandas'],
+    scripts=glob("tools/*.py")
 )
