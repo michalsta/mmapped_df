@@ -75,7 +75,7 @@ class DatasetWriter:
             file.write(dat.tobytes())
 
 
-def open_dataset(path: Path | str):
+def open_dataset(path: Path | str, **kwargs):
     path = Path(path)
     df = pd.read_pickle(path / "scheme.pickle")
 
