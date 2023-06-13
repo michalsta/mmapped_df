@@ -47,6 +47,12 @@ class DatasetWriter:
     def __del__(self):
         self.close()
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.close()
+
     def append_df(self, df):
         if self.files is None:
             self._set_schema(like=df)
