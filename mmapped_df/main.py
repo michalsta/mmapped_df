@@ -81,7 +81,7 @@ class DatasetWriter:
             file.write(dat.tobytes())
 
 
-def open_dataset(path: Path | str, **kwargs):
+def open_dataset_dct(path: Path | str, **kwargs):
     path = Path(path)
     df = pd.read_pickle(path / "scheme.pickle")
 
@@ -92,4 +92,7 @@ def open_dataset(path: Path | str, **kwargs):
         mmap_obj = mmap.mmap(fd, 0, prot=mmap.PROT_READ)
         new_data[column_name] = np.frombuffer(mmap_obj, dtype=col_dtype)
 
-    return pd.DataFrame(new_data, copy=False)
+    return new_data
+
+def open_dataset(path: Path | str, **kwargs):
+    return pd.DataFrame(open_dataset_dct(path, **kwargs), copy=False)
