@@ -11,6 +11,6 @@ setup(
     author_email='author@gmail.com',
     description='Memory-mapped, on-disk pandas df',
     packages=find_packages(),    
-    install_requires=['numpy', 'pandas', 'pyarrow'],
+    install_requires=['numpy', 'pandas', 'pyarrow', 'polars'],
     scripts=glob("tools/*.py")
 )

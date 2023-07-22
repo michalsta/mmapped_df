@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pyarrow as pa
+import polars as pl
 
 
 class DatasetWriter:
@@ -101,9 +102,13 @@ def open_dataset(path: Path | str, **kwargs):
 def np_to_pa(np_arr):
     '''Convert Numpy array to Pyarrow one, sharing the same backing buffer'''
     pyarrow_buf = pa.py_buffer(np_arr)
-    dtype = pa.from_numpy_dtyp(np_arr)
-    return pa.Array(type=dtype, length=len(np_arr), buffers=[None, pyarrow_buf], null_count=0)
+    dtype = pa.from_numpy_dtype(np_arr.dtype)
+    return pa.Array.from_buffers(type=dtype, length=len(np_arr), buffers=[None, pyarrow_buf], null_count=0)
 
 def open_dataset_pa(path: Path | str, **kwargs):
     '''Return dataset as dict of colname -> mmapped pyarrow array'''
-    return {key: np_to_pa(val) for key, val in dopen_dataset_dct(path, **kwargs)}
+    return {key: np_to_pa(val) for key, val in open_dataset_dct(path, **kwargs).items()}
+
+def open_dataset_pl(path: Path | str, **kwargs):
+    '''Return dataset as mmapped Polars dataframe'''
+    return pl.from_arrow(pa.table(open_dataset_pa(path, **kwargs)))
