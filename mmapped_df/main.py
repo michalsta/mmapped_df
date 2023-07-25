@@ -15,7 +15,7 @@ class DatasetWriter:
         self.dtypes = None
         self.path = Path(path)
         self.path.mkdir(parents=True, exist_ok=append_ok)
-        if append_ok and (self.path / "scheme.pickle").exists:
+        if append_ok and (self.path / "scheme.pickle").exists():
             df = pd.read_pickle(self.path / "scheme.pickle")
             self.files = []
             self.colnames = []
