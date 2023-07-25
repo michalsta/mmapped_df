@@ -4,8 +4,8 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import pyarrow as pa
 import polars as pl
+import pyarrow as pa
 
 
 class DatasetWriter:
@@ -16,7 +16,7 @@ class DatasetWriter:
         self.path = Path(path)
         self.path.mkdir(parents=True, exist_ok=append_ok)
         if append_ok and (self.path / "scheme.pickle").exists:
-            df = pd.read_pickle(path / "scheme.pickle")
+            df = pd.read_pickle(self.path / "scheme.pickle")
             self.files = []
             self.colnames = []
             self.dtypes = []
@@ -96,19 +96,25 @@ def open_dataset_dct(path: Path | str, **kwargs):
 
     return new_data
 
+
 def open_dataset(path: Path | str, **kwargs):
     return pd.DataFrame(open_dataset_dct(path, **kwargs), copy=False)
 
+
 def np_to_pa(np_arr):
-    '''Convert Numpy array to Pyarrow one, sharing the same backing buffer'''
+    """Convert Numpy array to Pyarrow one, sharing the same backing buffer"""
     pyarrow_buf = pa.py_buffer(np_arr)
     dtype = pa.from_numpy_dtype(np_arr.dtype)
-    return pa.Array.from_buffers(type=dtype, length=len(np_arr), buffers=[None, pyarrow_buf], null_count=0)
+    return pa.Array.from_buffers(
+        type=dtype, length=len(np_arr), buffers=[None, pyarrow_buf], null_count=0
+    )
+
 
 def open_dataset_pa(path: Path | str, **kwargs):
-    '''Return dataset as dict of colname -> mmapped pyarrow array'''
+    """Return dataset as dict of colname -> mmapped pyarrow array"""
     return {key: np_to_pa(val) for key, val in open_dataset_dct(path, **kwargs).items()}
 
+
 def open_dataset_pl(path: Path | str, **kwargs):
-    '''Return dataset as mmapped Polars dataframe'''
+    """Return dataset as mmapped Polars dataframe"""
     return pl.from_arrow(pa.table(open_dataset_pa(path, **kwargs)))
