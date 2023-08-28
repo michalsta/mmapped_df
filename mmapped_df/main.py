@@ -7,6 +7,7 @@ import pandas as pd
 import polars as pl
 import pyarrow as pa
 
+from .numba_helper import mkindex
 
 class DatasetWriter:
     def __init__(self, path: Path | str, append_ok: bool = False):
@@ -56,12 +57,15 @@ class DatasetWriter:
         self.close()
 
     def append_df(self, df):
+        #if len(df) == 0:
+        #    return
         if self.files is None:
             self._set_schema(like=df)
         for idx, colname in enumerate(df):
             column = df[colname]
             assert colname == self.colnames[idx]
-            assert column.values.dtype == self.dtypes[idx]
+            assert column.values.dtype == self.dtypes[idx] or len(df) == 0, \
+                f"Types don't match: {column.values.dtype} vs {self.dtypes[idx]}"
             self.files[idx].write(column.values.tobytes())
 
     def flush(self):
@@ -118,3 +122,15 @@ def open_dataset_pa(path: Path | str, **kwargs):
 def open_dataset_pl(path: Path | str, **kwargs):
     """Return dataset as mmapped Polars dataframe"""
     return pl.from_arrow(pa.table(open_dataset_pa(path, **kwargs)))
+
+
+class IndexedReader:
+    def __init__(self, path: Path | str, index_col: str, **kwargs):
+        self.dataset = open_dataset_dct(path, **kwargs)
+        self.indexed = self.dataset[index_col]
+        self.index = mkindex(self.indexed)
+
+    def __getitem__(self, idx):
+        return { k: v[self.index[idx]:self.index[idx+1]] for k, v in self.dataset.items()}
+    def __len__(self):
+        return len(self.index)-1
