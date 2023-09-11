@@ -9,37 +9,60 @@ import pyarrow as pa
 
 from .numba_helper import mkindex
 
+
+def schema_to_str(schema: pd.DataFrame):
+    ret = []
+    for colname in schema:
+        ret.append(f"{colname} {schema[colname].values.dtype}")
+    return '\n'.join(ret)
+
+
+def str_to_schema(s: str):
+    ret = {}
+    for line in s.splitlines():
+        colname, dtype_str = line.split()
+        ret[colname] = np.empty(dtype=np.dtype(dtype_str), shape=0)
+    return pd.DataFrame(ret)
+
+
+def _read_schema_tbl(path: Path):
+    try:
+        with open(path / 'schema.txt', 'rt') as f:
+            return str_to_schema(f.read())
+    except FileNotFoundError:
+        pickle_path = path / "scheme.pickle"
+        scheme = pd.read_pickle(pickle_path)
+        return scheme
+
+
 class DatasetWriter:
     def __init__(self, path: Path | str, append_ok: bool = False):
         self.files = None
         self.colnames = None
         self.dtypes = None
+        self.schema = None
         self.path = Path(path)
-        self.path.mkdir(parents=True, exist_ok=append_ok)
-        if append_ok and (self.path / "scheme.pickle").exists():
-            df = pd.read_pickle(self.path / "scheme.pickle")
-            self.files = []
-            self.colnames = []
-            self.dtypes = []
-            for idx, colname in enumerate(df):
-                self.files.append(open(self.path / f"{idx}.bin", "ab"))
-                self.colnames.append(self.colname)
-                self.dtypes.append(df[colname].values.dtype)
+        if self.path.exists() and append_ok:
+            tbl = _read_schema_tbl(self.path)
+            self._reset_schema(tbl)
+        else:
+            self.path.mkdir(parents=True, exist_ok=False)
 
-    def _set_schema(self, like: pd.DataFrame):
-        assert self.files is None
+    def _reset_schema(self, like: pd.DataFrame):
+        self.close()
         self.files = []
         self.colnames = []
         self.dtypes = []
-        types = {}
-        for idx, colname in enumerate(like):
-            file = open(self.path / f"{idx}.bin", "wb")
-            self.files.append(file)
+        schema_str = schema_to_str(like)
+        self.schema = str_to_schema(schema_str)
+
+        for idx, colname in enumerate(self.schema):
+            self.files.append(open(self.path / f"{idx}.bin", "ab"))
             self.colnames.append(colname)
-            dtype = like[colname].values.dtype
-            types[colname] = np.empty(dtype=dtype, shape=0)
-            self.dtypes.append(dtype)
-        pd.DataFrame(types).to_pickle(self.path / "scheme.pickle")
+            self.dtypes.append(self.schema[colname].values.dtype)
+
+        with open(self.path / 'schema.txt', 'wt') as f:
+            f.write(schema_str)
 
     def close(self):
         if self.files is not None:
@@ -60,7 +83,7 @@ class DatasetWriter:
         #if len(df) == 0:
         #    return
         if self.files is None:
-            self._set_schema(like=df)
+            self._reset_schema(like=df)
         for idx, colname in enumerate(df):
             column = df[colname]
             assert colname == self.colnames[idx]
@@ -89,7 +112,7 @@ class DatasetWriter:
 
 def open_dataset_dct(path: Path | str, **kwargs):
     path = Path(path)
-    df = pd.read_pickle(path / "scheme.pickle")
+    df = _read_schema_tbl(path)
 
     new_data = {}
     for idx, column_name in enumerate(df):
@@ -132,5 +155,6 @@ class IndexedReader:
 
     def __getitem__(self, idx):
         return { k: v[self.index[idx]:self.index[idx+1]] for k, v in self.dataset.items()}
+
     def __len__(self):
         return len(self.index)-1
