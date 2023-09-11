@@ -58,5 +58,5 @@ with OpenTIMS(args.input) as OT:
 
     with DatasetWriter(args.output) as DW:
         for frame in tqdm(OT, total=len(OT.frames['Id']), desc=sys.argv[0] + " (processing frames)"):
-            df = pd.DataFrame(frame)
+            df = pd.DataFrame(frame, copy=False)
             DW.append_df(df)
