@@ -20,26 +20,29 @@ class args:
 
 
 parser = argparse.ArgumentParser(
-    description="Obtain a set of statistics for the precursors clusters."
+    description="Translate HDF with clusters from tims-tof (or anything else using that format) to mmapped_df `.startrek` format."
 )
 parser.add_argument(
     "hdfs",
-    help="Input file containing MS1 cluster stats saved in HDF format.",
+    help="Input file(s) containing clusters from tims clustering tool in HDF format.",
     nargs="+",
     type=Path,
 )
 parser.add_argument(
     "--output_files",
-    help="Path to the final output.",
+    help="Path(s) to the final output: if provided, then in the same number as input HDF5 files.",
     nargs="+",
     type=Path,
 )
 parser.add_argument(
-    "--output_folder", help="Path to the final output.", default=None, type=Path
+    "--output_folder",
+    help="Path to the output folder: alternative to --output_files. Will contain all folders named after the input hdfs but with `.startrek` extension.",
+    default=None,
+    type=Path,
 )
 parser.add_argument(
     "--chunk_size",
-    help="How big should one chunk be.",
+    help="How big should one chunk be. Likely should be automated, but it's difficult to find any info on that.",
     default=100_000_000,
     type=int,
 )
@@ -47,6 +50,7 @@ parser.add_argument(
 parser.add_argument(
     "--progressbar_message",
     help="Show progressbar message.",
+    default="",
 )
 
 args = parser.parse_args()
