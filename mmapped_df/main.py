@@ -1,6 +1,7 @@
 import mmap
 import os
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
@@ -122,6 +123,9 @@ def open_dataset_dct(path: Path | str, **kwargs):
         new_data[column_name] = np.frombuffer(mmap_obj, dtype=col_dtype)
 
     return new_data
+
+def open_dataset_simple_namespace(path: Path | str, **kwargs) -> SimpleNamespace:
+    return SimpleNamespace(**open_dataset_dct(path, **kwargs))
 
 
 def open_dataset(path: Path | str, **kwargs):
