@@ -9,7 +9,7 @@ def gr():
 
 
 df = pd.DataFrame({'aaa' : gr(),
-                   'bbba' : gr()})
+                   'bb ba' : gr()})
 '''
 df.to_pickle('test_data/scheme.pickle')
 
