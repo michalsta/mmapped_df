@@ -15,7 +15,7 @@ def schema_to_str(schema: pd.DataFrame):
     ret = []
     for colname in schema:
         ret.append(f"{schema[colname].values.dtype} {colname}")
-    return '\n'.join(ret)
+    return "\n".join(ret)
 
 
 def str_to_schema(s: str):
@@ -28,7 +28,7 @@ def str_to_schema(s: str):
 
 def _read_schema_tbl(path: Path):
     try:
-        with open(path / 'schema.txt', 'rt') as f:
+        with open(path / "schema.txt", "rt") as f:
             return str_to_schema(f.read())
     except FileNotFoundError:
         pickle_path = path / "scheme.pickle"
@@ -62,7 +62,7 @@ class DatasetWriter:
             self.colnames.append(colname)
             self.dtypes.append(self.schema[colname].values.dtype)
 
-        with open(self.path / 'schema.txt', 'wt') as f:
+        with open(self.path / "schema.txt", "wt") as f:
             f.write(schema_str)
 
     def close(self):
@@ -81,15 +81,16 @@ class DatasetWriter:
         self.close()
 
     def append_df(self, df):
-        #if len(df) == 0:
+        # if len(df) == 0:
         #    return
         if self.files is None:
             self._reset_schema(like=df)
         for idx, colname in enumerate(df):
             column = df[colname]
             assert colname == self.colnames[idx]
-            assert column.values.dtype == self.dtypes[idx] or len(df) == 0, \
-                f"Types don't match: {column.values.dtype} vs {self.dtypes[idx]}"
+            assert (
+                column.values.dtype == self.dtypes[idx] or len(df) == 0
+            ), f"Types don't match: {column.values.dtype} vs {self.dtypes[idx]}"
             self.files[idx].write(column.values.tobytes())
 
     def flush(self):
@@ -123,6 +124,7 @@ def open_dataset_dct(path: Path | str, **kwargs):
         new_data[column_name] = np.frombuffer(mmap_obj, dtype=col_dtype)
 
     return new_data
+
 
 def open_dataset_simple_namespace(path: Path | str, **kwargs) -> SimpleNamespace:
     return SimpleNamespace(**open_dataset_dct(path, **kwargs))
@@ -158,7 +160,9 @@ class IndexedReader:
         self.index = mkindex(self.indexed)
 
     def __getitem__(self, idx):
-        return { k: v[self.index[idx]:self.index[idx+1]] for k, v in self.dataset.items()}
+        return {
+            k: v[self.index[idx] : self.index[idx + 1]] for k, v in self.dataset.items()
+        }
 
     def __len__(self):
-        return len(self.index)-1
+        return len(self.index) - 1
