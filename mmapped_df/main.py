@@ -14,14 +14,14 @@ from .numba_helper import mkindex
 def schema_to_str(schema: pd.DataFrame):
     ret = []
     for colname in schema:
-        ret.append(f"{colname} {schema[colname].values.dtype}")
+        ret.append(f"{schema[colname].values.dtype} {colname}")
     return '\n'.join(ret)
 
 
 def str_to_schema(s: str):
     ret = {}
     for line in s.splitlines():
-        colname, dtype_str = line.split()
+        dtype_str, colname = line.split(maxsplit=1)
         ret[colname] = np.empty(dtype=np.dtype(dtype_str), shape=0)
     return pd.DataFrame(ret)
 
