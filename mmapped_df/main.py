@@ -37,7 +37,7 @@ def _read_schema_tbl(path: Path):
 
 
 class DatasetWriter:
-    def __init__(self, path: Path | str, append_ok: bool = False):
+    def __init__(self, path: Path | str, append_ok: bool = False, overwrite_dir=False):
         self.files = None
         self.colnames = None
         self.dtypes = None
@@ -47,7 +47,7 @@ class DatasetWriter:
             tbl = _read_schema_tbl(self.path)
             self._reset_schema(tbl)
         else:
-            self.path.mkdir(parents=True, exist_ok=False)
+            self.path.mkdir(parents=True, exist_ok=overwrite_dir)
 
     def _reset_schema(self, like: pd.DataFrame):
         self.close()
