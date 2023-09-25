@@ -4,6 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import polars as pl
 import pyarrow as pa
@@ -107,6 +108,15 @@ class DatasetWriter:
                 column.values.dtype == self.dtypes[idx] or len(df) == 0
             ), f"Types don't match: {column.values.dtype} vs {self.dtypes[idx]}"
             self.files[idx].write(column.values.tobytes())
+
+    def append_column(self, colname: str, column: npt.NDArray | pd.Series):
+        if isinstance(column, pd.Series):
+            column = column.values
+        assert self.length == len(column)
+        self.schema[colname] = np.empty_like(column)
+        with open(self.path / f"{len(self.files)}.bin", "xb") as f:
+            f.write(column.tobytes())
+        self._reset_schema(like=self.schema)
 
     def flush(self):
         for file in self.files:

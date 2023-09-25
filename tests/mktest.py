@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from mmapped_df import DatasetWriter
+from mmapped_df import DatasetWriter, open_dataset
 import os
 from tqdm import tqdm
 
@@ -17,7 +17,10 @@ with open('test_data/1.dat', 'wb') as f:
     f.write(gr().tobytes())
 """
 with DatasetWriter("test_data2") as DW:
-    for _ in tqdm(range(3000)):
+    for _ in tqdm(range(30)):
         DW.append_df(df)
+    df = open_dataset("test_data2")
+    ncol = df["aaa"] + df["bb ba"]
+    DW.append_column("sum", ncol)
 
 # print(df.dtypes)
