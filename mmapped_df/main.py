@@ -56,11 +56,21 @@ class DatasetWriter:
         self.dtypes = []
         schema_str = schema_to_str(like)
         self.schema = str_to_schema(schema_str)
-
+        lengths = []
         for idx, colname in enumerate(self.schema):
-            self.files.append(open(self.path / f"{idx}.bin", "ab"))
+            file_path = self.path / f"{idx}.bin"
+            self.files.append(open(file_path, "ab"))
             self.colnames.append(colname)
             self.dtypes.append(self.schema[colname].values.dtype)
+            lengths.append(file_path.stat().st_size / self.dtypes[-1].itemsize)
+            print(lengths)
+
+        if not (lengths == [] or all(l == lengths[0] for l in lengths)):
+            raise RuntimeError(
+                f"Corrupted dataset: columns of unequal lengths: {self.path}"
+            )
+
+        self.length = 0 if lengths == [] else int(lengths[0])
 
         with open(self.path / "schema.txt", "wt") as f:
             f.write(schema_str)
@@ -68,6 +78,7 @@ class DatasetWriter:
     def close(self):
         if self.files is not None:
             for file in self.files:
+                print(len(self))
                 file.close()
         self.files = None
 
@@ -80,11 +91,15 @@ class DatasetWriter:
     def __exit__(self, type, value, traceback):
         self.close()
 
+    def __len__(self):
+        return self.length
+
     def append_df(self, df):
-        # if len(df) == 0:
-        #    return
+        if len(df) == 0:
+            return
         if self.files is None:
             self._reset_schema(like=df)
+        self.length += len(df)
         for idx, colname in enumerate(df):
             column = df[colname]
             assert colname == self.colnames[idx]
@@ -98,15 +113,19 @@ class DatasetWriter:
             file.flush()
 
     def append(self, **kwargs):
+        lengths = []
         for file, dtype, colname in zip(self.files, self.dtypes, self.colnames):
             dat = dtype.type(kwargs[colname])
             file.write(dat.tobytes())
+            lengths.append(len(dat))
+        self.length += lengths[0]
 
     def append_dct(self, D):
         return self.append(**D)
 
     def append_list(self, L):
         assert len(L) == len(self.files)
+        self.length += len(L[0])
         for data, file, dtype in zip(L, self.files, self.dtypes):
             dat = dtype.type(data)
             file.write(dat.tobytes())
