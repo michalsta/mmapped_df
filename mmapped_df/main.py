@@ -64,7 +64,6 @@ class DatasetWriter:
             self.colnames.append(colname)
             self.dtypes.append(self.schema[colname].values.dtype)
             lengths.append(file_path.stat().st_size / self.dtypes[-1].itemsize)
-            print(lengths)
 
         if not (lengths == [] or all(l == lengths[0] for l in lengths)):
             raise RuntimeError(
@@ -79,7 +78,6 @@ class DatasetWriter:
     def close(self):
         if self.files is not None:
             for file in self.files:
-                print(len(self))
                 file.close()
         self.files = None
 
