@@ -60,7 +60,7 @@ class DatasetWriter:
         lengths = []
         for idx, colname in enumerate(self.schema):
             file_path = self.path / f"{idx}.bin"
-            self.files.append(open(file_path, "ab"))
+            self.files.append(open(file_path, "ab", buffering=10240))
             self.colnames.append(colname)
             self.dtypes.append(self.schema[colname].values.dtype)
             lengths.append(file_path.stat().st_size / self.dtypes[-1].itemsize)
@@ -127,6 +127,12 @@ class DatasetWriter:
             file.write(dat.tobytes())
             lengths.append(len(dat))
         self.length += lengths[0]
+
+    def append_row(self, **kwargs):
+        for file, dtype, colname in zip(self.files, self.dtypes, self.colnames):
+            dat = dtype.type(kwargs[colname])
+            file.write(dat.tobytes())
+        self.length += 1
 
     def append_dct(self, D):
         return self.append(**D)
