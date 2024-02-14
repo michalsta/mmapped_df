@@ -150,7 +150,7 @@ class DatasetWriter:
 
 
 # TODO: use read_write
-def open_dataset_dct(path: Path | str, **kwargs, read_write: bool=False):
+def open_dataset_dct(path: Path | str, read_write: bool = False, **kwargs):
     path = Path(path)
     df = _read_schema_tbl(path)
 
