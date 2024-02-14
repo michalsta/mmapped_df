@@ -50,9 +50,17 @@ class DatasetWriter:
         else:
             self.path.mkdir(parents=True, exist_ok=overwrite_dir)
 
-    # @staticmethod
-    # def preallocate_dataset(path: Path | str, dataframe_scheme: pd.DataFrame, nrows: int) -> None:
-    #     ...
+    @staticmethod
+    def preallocate_dataset(
+        path: Path | str,
+        dataframe_scheme: pd.DataFrame,
+        nrows: int,
+        overwrite_dir=False,
+    ) -> None:
+        with DatasetWriter(path=path, overwrite_dir=overwrite_dir) as DW:
+            DW._reset_schema(like=dataframe_scheme)
+            for file, dt in zip(DW.files, DW.dtypes):
+                file.truncate(nrows * dt.itemsize)
 
     def _reset_schema(self, like: pd.DataFrame):
         self.close()
@@ -149,16 +157,24 @@ class DatasetWriter:
             file.write(dat.tobytes())
 
 
-# TODO: use read_write
-def open_dataset_dct(path: Path | str, **kwargs, read_write: bool=False):
+def open_dataset_dct(path: Path | str, read_write: bool = False, **kwargs):
     path = Path(path)
     df = _read_schema_tbl(path)
 
     new_data = {}
+
+    open_flags = os.O_RDWR if read_write else os.O_RDONLY
+    try:
+        open_flags = open_flags | os.O_BINARY
+    except AttributeError:
+        # We're not on Windows, thank goodness
+        pass
+
+    mmap_flags = mmap.PROT_READ | mmap.PROT_WRITE if read_write else mmap.PROT_READ
     for idx, column_name in enumerate(df):
         col_dtype = df[column_name].values.dtype
-        fd = os.open(path / f"{idx}.bin", os.O_RDONLY)
-        mmap_obj = mmap.mmap(fd, 0, prot=mmap.PROT_READ)
+        fd = os.open(path / f"{idx}.bin", open_flags)
+        mmap_obj = mmap.mmap(fd, 0, prot=mmap_flags)
         new_data[column_name] = np.frombuffer(mmap_obj, dtype=col_dtype)
 
     return new_data
