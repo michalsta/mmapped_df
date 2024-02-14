@@ -50,6 +50,10 @@ class DatasetWriter:
         else:
             self.path.mkdir(parents=True, exist_ok=overwrite_dir)
 
+    # @staticmethod
+    # def preallocate_dataset(path: Path | str, dataframe_scheme: pd.DataFrame, nrows: int) -> None:
+    #     ...
+
     def _reset_schema(self, like: pd.DataFrame):
         self.close()
         self.files = []
@@ -145,7 +149,8 @@ class DatasetWriter:
             file.write(dat.tobytes())
 
 
-def open_dataset_dct(path: Path | str, **kwargs):
+# TODO: use read_write
+def open_dataset_dct(path: Path | str, **kwargs, read_write: bool=False):
     path = Path(path)
     df = _read_schema_tbl(path)
 
