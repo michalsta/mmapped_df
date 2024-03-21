@@ -1,21 +1,27 @@
 #!/usr/bin/env python3
 import argparse
-import typing
+import sqlite3
+import sys
 from pathlib import Path
 
+import tqdm
+from dia_common import midia_schemes
+
 import h5py
+import numba
+import numpy as np
 import pandas as pd
-from mmapped_df import DatasetWriter
-from MSclusterparser.raw_peaks_4DFF_parser import Clusters_4DFF_HDF
-from tqdm import tqdm
+from mmapped_df import DatasetWriter, open_dataset_dct
 
 
 class args:
-    hdfs = [Path("partial/G8027/fd2b37bd4e1/default/ms2_clusters.hdf")]
-    output_files = [Path("/tmp/test_ms2.startrek")]
-    output_folder = None
-    progressbar = True
-    chunk_size = 100_000_000
+    hdf = Path(
+        "P/clusters/tims/G8EAIGRwXkwjnl_fIX5jY39ZEoth6jvbm6xpPnZDKpvB9nfEKOIIKfe7fVB8H239XCUKNaYKNim6yp85nozd6Mxq3Hp0vL3o5RjbK3jG1aL5P8mXdA1TrSHC0ACsK8GKIXkaQ13QM643ygZpAEWCem06oxQ=/precursor_clusters.hdf"
+    )
+    analysis_tdf_path = Path(
+        "P/dataset/CwiAW3NwZWN0cmEvRzgwMjcuZF0D/raw.d/analysis.tdf"
+    )
+    output = Path("test/bigdump.startrek")
     progressbar_message = "There is no future for you!!!"
 
 
@@ -23,82 +29,90 @@ parser = argparse.ArgumentParser(
     description="Translate HDF with clusters from tims-tof (or anything else using that format) to mmapped_df `.startrek` format."
 )
 parser.add_argument(
-    "hdfs",
-    help="Input file(s) containing clusters from tims clustering tool in HDF format.",
-    nargs="+",
+    "hdf",
+    help="Input HDF5 containing clusters from tims clustering tool in HDF format.",
     type=Path,
 )
 parser.add_argument(
-    "--output_files",
-    help="Path(s) to the final output: if provided, then in the same number as input HDF5 files.",
-    nargs="+",
+    "analysis_tdf_path",
+    help="Path to 'folder.d/analysis.tdf', directly the file.",
     type=Path,
 )
 parser.add_argument(
-    "--output_folder",
-    help="Path to the output folder: alternative to --output_files. Will contain all folders named after the input hdfs but with `.startrek` extension.",
-    default=None,
+    "output",
+    help="Path to the final output in the .startrek format.",
     type=Path,
 )
-parser.add_argument(
-    "--chunk_size",
-    help="How big should one chunk be. Likely should be automated, but it's difficult to find any info on that.",
-    default=100_000_000,
-    type=int,
-)
-
 parser.add_argument(
     "--progressbar_message",
     help="Show progressbar message.",
     default="",
 )
-
 args = parser.parse_args()
 
 
-def iter_pairs_of_indices(
-    start: int, end: int, step: int
-) -> typing.Iterator[tuple[int]]:
-    i_prev = start
-    i = i_prev + step
-    while i <= end:
-        yield i_prev, i
-        i_prev = i
-        i += step
-    if i_prev < end:
-        yield i_prev, end
+@numba.njit
+def apply_step_translation(
+    bruker_steps,
+    midia_steps,
+    bruker_steps_to_midia_steps,
+) -> None:
+    assert len(midia_steps) == len(bruker_steps)
+    for i, bruker_step in enumerate(bruker_steps):
+        midia_steps[i] = bruker_steps_to_midia_steps[bruker_step]
+
+
+@numba.njit
+def overwrite(xx, yy) -> None:
+    assert len(xx) == len(yy)
+    for i in range(len(xx)):
+        yy[i] = xx[i]
 
 
 if __name__ == "__main__":
-    assert (args.output_folder is None) ^ (len(args.output_files) == 0)
-    if len(args.output_files) > 0:
-        assert len(args.output_files) == len(args.hdfs)
-        output_paths = args.output_files
-    else:
-        output_paths = [
-            args.output_folder / hdf_path.with_suffix(".startrek").name
-            for hdf_path in args.hdfs
-        ]
+    with h5py.File(args.hdf, mode="r") as hdf:
+        clusters = hdf["raw/data"]
 
-    for i, (hdf_path, output_path) in enumerate(zip(args.hdfs, output_paths)):
-        if args.progressbar_message:
-            print(
-                f"File {i+1}/{len(args.hdfs)}\n:\tdumping `{hdf_path}` to `{output_path}`\n"
-            )
-        hdf = h5py.File(hdf_path, mode="r", swmr=True)
-        rawdata = hdf["/raw/data"]
-        dataset_writer = DatasetWriter(output_path, append_ok=True)
+        if "step" in clusters:
+            assert args.analysis_tdf_path.exists()
 
-        start_end_tuples = list(
-            iter_pairs_of_indices(
-                start=0, end=len(rawdata["ClusterID"]), step=args.chunk_size
+            with sqlite3.connect(args.analysis_tdf_path) as conn:
+                scheme = midia_schemes.MIDIA_scheme(conn)
+            translation = scheme.scheme.query("not is_ms1")
+            bruker_step_to_midia_step = dict(
+                zip(translation.bruker_step, translation.midia_step)
             )
+            bruker_steps = translation.bruker_step.to_numpy()
+            midia_steps = translation.midia_step.to_numpy()
+
+            assert bruker_steps.min() >= 0
+            bruker_steps_to_midia_steps = np.full(bruker_steps.max() + 1, 1000)
+            bruker_steps_to_midia_steps[bruker_steps] = midia_steps
+
+        renaming = lambda x: "midia_step" if x == "step" else x
+        dataframe_scheme = pd.DataFrame(
+            {renaming(c): pd.Series(dtype=clusters[c].dtype) for c in clusters}
         )
-        if args.progressbar_message:
-            start_end_tuples = tqdm(start_end_tuples, desc=args.progressbar_message)
+        size = len(clusters["ClusterID"])
 
-        for start, end in start_end_tuples:
-            df = pd.DataFrame(
-                {column: rawdata[column][start:end] for column in rawdata}, copy=False
-            )
-            dataset_writer.append_df(df)
+        DatasetWriter.preallocate_dataset(
+            args.output,
+            dataframe_scheme,
+            nrows=size,
+        )
+        datasets = open_dataset_dct(args.output, read_write=True)
+
+        columns = list(clusters)
+        if args.progressbar_message:
+            print(" ".join(sys.argv))
+            columns = tqdm.tqdm(columns, desc=args.progressbar_message)
+
+        for c in columns:
+            if c == "step":
+                apply_step_translation(
+                    clusters[c][()],  # RAM copy
+                    datasets[renaming(c)],
+                    bruker_steps_to_midia_steps,
+                )
+            else:
+                overwrite(clusters[c][:], datasets[renaming(c)])
