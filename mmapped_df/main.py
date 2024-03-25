@@ -213,7 +213,7 @@ class IndexedReader:
     def __init__(self, path: Path | str, index_col: str, **kwargs):
         self.dataset = open_dataset_dct(path, **kwargs)
         self.indexed = self.dataset[index_col]
-        self.index = mkindex(self.indexed)
+        self.index, self.counts, self.last = mkindex(self.indexed)
 
     def __getitem__(self, idx):
         return {
@@ -221,4 +221,4 @@ class IndexedReader:
         }
 
     def __len__(self):
-        return len(self.index) - 1
+        return self.last
