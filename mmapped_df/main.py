@@ -133,6 +133,8 @@ class DatasetWriter:
             file.flush()
 
     def append(self, **kwargs):
+        if self.files is None:
+            self._reset_schema(pd.DataFrame(kwargs, copy=False))
         lengths = []
         for file, dtype, colname in zip(self.files, self.dtypes, self.colnames):
             dat = dtype.type(kwargs[colname])
