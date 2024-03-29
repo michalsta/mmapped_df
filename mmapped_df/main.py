@@ -221,4 +221,4 @@ class IndexedReader:
         }
 
     def __len__(self):
-        return self.last + 1
+        return self.last

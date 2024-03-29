@@ -10,11 +10,12 @@ def count1D(counts: npt.NDArray, xx: npt.NDArray) -> None:
         counts[xx[i]] += 1
 
 
-def mkindex(mkindex) -> tuple[npt.NDArray, npt.NDArray, np.uint32]:
-    last = mkindex[-1]
-    counts = np.zeros(last + 1, dtype=np.uint32)
-    count1D(counts, mkindex)
+def mkindex(indexed) -> tuple[npt.NDArray, npt.NDArray, np.uint32]:
+    last = np.uint64(np.max(indexed) + 1)
+    counts = np.zeros(last, dtype=np.uint64)
+    count1D(counts, indexed)
     index = np.empty(shape=(counts.shape[0] + 1,), dtype=np.uint64)
+    index[0] = 0
     np.cumsum(counts, out=index[1:])
     return index, counts, last
 
