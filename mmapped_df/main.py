@@ -222,3 +222,13 @@ class IndexedReader:
 
     def __len__(self):
         return self.last
+
+
+class GroupedIndex:
+    def __init__(self, indexed_column: pd.Series, dataset: pd.DataFrame):
+        self.indexed = indexed_column.to_numpy()
+        self.dataset = {c: dataset[c].to_numpy() for c in dataset.columns}
+        self.index, self.counts, self.last = mkindex(self.indexed)
+
+    def __len__(self):
+        return self.last
