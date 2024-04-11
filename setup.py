@@ -9,9 +9,9 @@ def get_polars():
     except ModuleNotFoundError:
         return "polars"
     info = cpuinfo.get_cpu_info()
-    if info['arch'] != "X86_64":
+    if info["arch"] != "X86_64":
         return "polars"
-    if "avx2" in info['flags']:
+    if "avx2" in info["flags"]:
         return "polars"
     else:
         return "polars-lts-cpu"
