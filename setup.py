@@ -12,7 +12,7 @@ def get_polars():
     if info['arch'] != "X86_64":
         return "polars"
     if "avx2" in info['flags']:
-        return polars
+        return "polars"
     else:
         return "polars-lts-cpu"
 
