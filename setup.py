@@ -5,12 +5,16 @@ from glob import glob
 
 def get_polars():
     try:
-        import cpufeature
+        import cpuinfo
     except ModuleNotFoundError:
         return "polars"
-    if cpufeature.CPUFeature["AVX2"]:
+    info = cpuinfo.get_cpu_info()
+    if info['arch'] != "X86_64":
         return "polars"
-    return "polars-lts-cpu"
+    if "avx2" in info['flags']:
+        return polars
+    else:
+        return "polars-lts-cpu"
 
 
 setup(
