@@ -143,6 +143,8 @@ class DatasetWriter:
         self.length += lengths[0]
 
     def append_row(self, **kwargs):
+        if self.files is None:
+            self._reset_schema(pd.DataFrame([kwargs], copy=False))
         for file, dtype, colname in zip(self.files, self.dtypes, self.colnames):
             dat = dtype.type(kwargs[colname])
             file.write(dat.tobytes())
