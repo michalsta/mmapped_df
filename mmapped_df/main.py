@@ -216,9 +216,18 @@ class IndexedReader:
         self.index, self.counts, self.last = mkindex(self.indexed)
 
     def __getitem__(self, idx):
+        # numpy.uint64(5)+1 == 6.0. So stupid.
         return {
-            k: v[self.index[idx] : self.index[idx + 1]] for k, v in self.dataset.items()
+            k: v[self.index[idx] : self.index[int(idx + 1)]] for k, v in self.dataset.items()
         }
+
+    def iter_nonempty(self):
+        """The usual __iter__ protocol will iterate over all entries, incl. empty ones"""
+        for idx in range(len(self.index) - 1):
+            start = self.index[idx]
+            end = self.index[idx + 1]
+            if end > start:
+                yield {k: v[start:end] for k, v in self.dataset.items()}
 
     def __len__(self):
         return self.last
