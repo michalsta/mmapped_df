@@ -33,16 +33,20 @@ def mkindex(indexed) -> tuple[npt.NDArray, npt.NDArray, np.uint32]:
 
 
 @numba.njit(parallel=True)
-def get_mean_mzs(
+def get_intensity_weighted_mean_mzs(
     ClusterIDs,
     index,
     counts,
     mzs,
+    intensities,
 ):
     means = np.zeros(shape=(len(ClusterIDs),), dtype=np.float64)
     for i in numba.prange(len(ClusterIDs)):
         ClusterID = ClusterIDs[i]
         start = index[ClusterID]
         count = counts[ClusterID]
-        means[i] = np.mean(mzs[start : start + count])
+        means[i] = np.average(
+            mzs[start : start + count],
+            weights=intensities[start : start + count],
+        )
     return means
