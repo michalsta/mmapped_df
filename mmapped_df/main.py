@@ -48,6 +48,9 @@ class DatasetWriter:
             tbl = _read_schema_tbl(self.path)
             self._reset_schema(tbl)
         else:
+            if overwrite_dir:
+                import shutil
+                shutil.rmtree(self.path, ignore_errors=True)
             self.path.mkdir(parents=True, exist_ok=overwrite_dir)
 
     @staticmethod
