@@ -48,6 +48,9 @@ class DatasetWriter:
             tbl = _read_schema_tbl(self.path)
             self._reset_schema(tbl)
         else:
+            if overwrite_dir:
+                import shutil
+                shutil.rmtree(self.path, ignore_errors=True)
             self.path.mkdir(parents=True, exist_ok=overwrite_dir)
 
     @staticmethod
@@ -233,6 +236,37 @@ class IndexedReader:
 
     def __len__(self):
         return self.last
+
+    def to_numba(self):
+        ''''Transform this object into something numba-usable'''
+        import numba
+        from collections import namedtuple
+        NT = namedtuple("NT", self.dataset.keys())
+        data = NT(**self.dataset)
+        index = self.index
+
+        #fieldnames = numba.typed.typedlist.List()
+        #datasets = numba.typed.typedlist.List()
+        #for k, v in self.dataset.items():
+        #    fieldnames.append(k)
+        #    datasets.append(v)
+        return NumbaIndexedReader(data, 3)#self.index)
+        from collections import namedtuple
+        Chunk = namedtuple("IndexedReader_Chunk", self.dataset.keys())
+        ret = numba.typed.typedlist.List()
+        for D in self:
+            # ret.append(numba.typed.typeddict.Dict(D.items()))
+            ret.append(Chunk(**D))
+        return ret
+
+
+from numba.experimental import jitclass
+@jitclass
+class NumbaIndexedReader:
+    def __init__(self, data, index):
+        #self.data = dict(data)
+        #self.fieldnames = fieldnames
+        self.index = index
 
 
 class GroupedIndex:
