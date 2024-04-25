@@ -28,13 +28,8 @@ def str_to_schema(s: str):
 
 
 def _read_schema_tbl(path: Path):
-    try:
-        with open(path / "schema.txt", "rt") as f:
-            return str_to_schema(f.read())
-    except FileNotFoundError:
-        pickle_path = path / "scheme.pickle"
-        scheme = pd.read_pickle(pickle_path)
-        return scheme
+    with open(path / "schema.txt", "rt") as f:
+        return str_to_schema(f.read())
 
 
 class DatasetWriter:
