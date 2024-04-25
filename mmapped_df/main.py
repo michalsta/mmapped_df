@@ -229,9 +229,25 @@ class IndexedReader:
             if end > start:
                 yield {k: v[start:end] for k, v in self.dataset.items()}
 
+    def get_column(self, idx, colname):
+        cdat = self.dataset[colname]
+        return cdat[self.index[idx] : self.index[int(idx + 1)]]
+
     def __len__(self):
         return self.last
 
+class SingleColReader:
+    def __init__(self, path: Path | str, index_col: str, data_col: str, **kwargs):
+        dataset = open_dataset_dct(path, **kwargs)
+        self.indexed = dataset[index_col]
+        self.data = dataset[data_col]
+        self.index, _, self.last = mkindex(self.indexed)
+
+    def __getitem__(self, idx):
+        return self.data[self.index[idx] : self.index[int(idx + 1)]]
+
+    def __len__(self):
+        return self.last
 
 class GroupedIndex:
     def __init__(self, indexed_column: pd.Series, dataset: pd.DataFrame):
