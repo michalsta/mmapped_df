@@ -133,12 +133,12 @@ class DatasetWriter:
     def append(self, **kwargs):
         if self.files is None:
             self._reset_schema(pd.DataFrame(kwargs, copy=False))
-        lengths = []
+        length = None
         for file, dtype, colname in zip(self.files, self.dtypes, self.colnames):
             dat = dtype.type(kwargs[colname])
             file.write(dat.tobytes())
-            lengths.append(len(dat))
-        self.length += lengths[0]
+            length = len(kwargs[colname])
+        self.length += length
 
     def append_row(self, **kwargs):
         if self.files is None:
