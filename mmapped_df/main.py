@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-import polars as pl
+#import polars as pl
 import pyarrow as pa
 
 from .numba_helper import mkindex
@@ -206,6 +206,7 @@ def open_dataset_pa(path: Path | str, **kwargs):
 
 def open_dataset_pl(path: Path | str, **kwargs):
     """Return dataset as mmapped Polars dataframe"""
+    import polars as pl
     return pl.from_arrow(pa.table(open_dataset_pa(path, **kwargs)))
 
 
