@@ -218,6 +218,8 @@ class IndexedReader:
 
     def __getitem__(self, idx):
         # numpy.uint64(5)+1 == 6.0. So stupid.
+        if idx < 0 or idx >= len(self):
+            raise IndexError(f"Invalid index {idx}")
         return {
             k: v[self.index[idx] : self.index[int(idx + 1)]] for k, v in self.dataset.items()
         }
