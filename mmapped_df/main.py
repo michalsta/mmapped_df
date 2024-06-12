@@ -6,10 +6,12 @@ from types import SimpleNamespace
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-#import polars as pl
-import pyarrow as pa
 
-from .numba_helper import mkindex
+# import polars as pl
+import pyarrow as pa
+from numba_progress import ProgressBar
+
+from .numba_helper import _apply_filter, count_falses_in_groups, mkindex
 
 
 def schema_to_str(schema: pd.DataFrame):
@@ -45,6 +47,7 @@ class DatasetWriter:
         else:
             if overwrite_dir:
                 import shutil
+
                 shutil.rmtree(self.path, ignore_errors=True)
             self.path.mkdir(parents=True, exist_ok=overwrite_dir)
 
@@ -207,6 +210,7 @@ def open_dataset_pa(path: Path | str, **kwargs):
 def open_dataset_pl(path: Path | str, **kwargs):
     """Return dataset as mmapped Polars dataframe"""
     import polars as pl
+
     return pl.from_arrow(pa.table(open_dataset_pa(path, **kwargs)))
 
 
@@ -221,7 +225,8 @@ class IndexedReader:
         if idx < 0 or idx >= len(self):
             raise IndexError(f"Invalid index {idx}")
         return {
-            k: v[self.index[idx] : self.index[int(idx + 1)]] for k, v in self.dataset.items()
+            k: v[self.index[idx] : self.index[int(idx + 1)]]
+            for k, v in self.dataset.items()
         }
 
     def iter_nonempty(self):
@@ -239,6 +244,58 @@ class IndexedReader:
     def __len__(self):
         return self.last
 
+    def filter(
+        self,
+        new_path: Path | str,
+        retain_decisions: npt.NDArray,
+        progressbar_desc="Saving filtered events",
+    ):
+        """
+        Arguments:
+            new_path (Path): Path to new filtered results.
+            retain_decisions (npt.NDArray): an array of boolean values: True standing for retain, False for filter out.
+
+        Returns:
+            npt.NDArray:  distributoin of falses within each cluster.
+        """
+
+        false_distr = count_falses_in_groups(retain_decisions, self.index)
+        assert np.all(
+            false_distr < self.counts
+        ), "Some clusters entirely disappeared after the quadrupole interesection filter: that's like impossible."
+
+        index_after_filter = np.zeros(shape=len(self.index), dtype=self.index.dtype)
+        index_after_filter[1:] = self.index[1:] - np.cumsum(false_distr)
+
+        clustered_events_after_filtering = index_after_filter[-1]
+        assert (
+            np.sum(retain_decisions) == clustered_events_after_filtering
+        ), "security check 666."
+
+        new_path = Path(new_path)
+        DatasetWriter.preallocate_dataset(
+            new_path,
+            pd.DataFrame(self.dataset, copy=False),
+            nrows=np.sum(retain_decisions),
+        )
+        filtered_clusters = open_dataset_dct(new_path, read_write=True)
+        with ProgressBar(
+            total=len(self.dataset) * int(clustered_events_after_filtering),
+            desc=progressbar_desc,
+        ) as progress_proxy:
+            for column, unfiltered_values in self.dataset.items():
+                _apply_filter(
+                    retain_array=retain_decisions,
+                    unfiltered_values=unfiltered_values,
+                    final_location=filtered_clusters[column],
+                    index_before_filter=self.index,
+                    index_after_filter=index_after_filter,
+                    progress_proxy=progress_proxy,
+                )
+
+        return false_distr
+
+
 class SingleColReader:
     def __init__(self, path: Path | str, index_col: str, data_col: str, **kwargs):
         dataset = open_dataset_dct(path, **kwargs)
@@ -252,11 +309,9 @@ class SingleColReader:
     def __len__(self):
         return self.last
 
-class GroupedIndex:
+
+class GroupedIndex(IndexedReader):
     def __init__(self, indexed_column: pd.Series, dataset: pd.DataFrame):
         self.indexed = indexed_column.to_numpy()
         self.dataset = {c: dataset[c].to_numpy() for c in dataset.columns}
         self.index, self.counts, self.last = mkindex(self.indexed)
-
-    def __len__(self):
-        return self.last

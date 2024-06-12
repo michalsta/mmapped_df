@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-from setuptools import setup, find_packages
 from glob import glob
+
+from setuptools import find_packages, setup
 
 
 def get_polars():
@@ -25,6 +26,7 @@ setup(
     author_email="author@gmail.com",
     description="Memory-mapped, on-disk pandas df",
     packages=find_packages(),
-    install_requires=["numpy", "pandas", "pyarrow", "numba", "h5py"] + [get_polars()],
+    install_requires=["numpy", "pandas", "pyarrow", "numba", "h5py", "numba_progress"]
+    + [get_polars()],
     scripts=glob("tools/*.py"),
 )
