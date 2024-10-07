@@ -1,5 +1,4 @@
 [build-system]
 requires = [
-    "py-cpuinfo",
     "setuptools",
 ]
