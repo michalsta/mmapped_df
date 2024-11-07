@@ -3,13 +3,14 @@ import os
 from pathlib import Path
 from types import SimpleNamespace
 
+from numba_progress import ProgressBar
+
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
 # import polars as pl
 import pyarrow as pa
-from numba_progress import ProgressBar
 
 from .numba_helper import _apply_filter, count_falses_in_groups, mkindex
 

@@ -1,4 +1,46 @@
 [build-system]
-requires = [
-    "setuptools",
+requires = ["setuptools >= 64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name="mmapped_df"
+version="0.0.2"
+description="Memory-mapped, on-disk pandas df"
+readme="README.md"
+authors=[
+    {name="Michał Piotr Startek",email="michalsta@mimuw.edu.pl"},
+    {name="Mateusz Krzysztof Łącki",email="matteo.lacki@gmail.com"},
 ]
+dependencies = [
+    "click",
+    "numpy",
+    "numba",
+    "numba_progress",
+    "pandas",
+    "tqdm",
+    "duckdb",
+    "pyarrow",
+    "pytest",
+    "h5py",
+]
+
+[project.optional-dependencies]
+polars = ["install-proper-polars"]
+
+[project.scripts]
+mmapped_df_convert = "mmapped_df.tools.mmapped_df_convert:main"
+mmapped_df_uncompress_tdf = "mmapped_df.tools.mmapped_df_uncompress_tdf:main"
+hdf_to_startrek = "mmapped_df.cli:hdf_to_startrek"
+
+[project.urls]
+homepage="https://github.com/michalsta/mmapped_df"
+repository="https://github.com/michalsta/mmapped_df.git"
+
+[tool.uv]
+reinstall-package = ["mmapped_df"]
+
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
