@@ -186,6 +186,16 @@ def open_dataset_dct(path: Path | str, read_write: bool = False, **kwargs):
     return new_data
 
 
+def open_new_dataset_dct(path: Path | str, scheme: pd.DataFrame | dict, nrows: int):
+    """Create a new dataset and return it as dictionary of column names to appropriately sized arrays."""
+    DatasetWriter.preallocate_dataset(
+        path,
+        pd.DataFrame(scheme),
+        nrows=nrows,
+    )
+    return open_dataset_dct(path, read_write=True)
+
+
 def open_dataset_simple_namespace(path: Path | str, **kwargs) -> SimpleNamespace:
     return SimpleNamespace(**open_dataset_dct(path, **kwargs))
 

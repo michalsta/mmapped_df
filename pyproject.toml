@@ -21,6 +21,7 @@ dependencies = [
     "tqdm",
     "duckdb",
     "pyarrow",
+    "pandas_ops",
     "pytest",
     "h5py",
 ]
@@ -29,9 +30,6 @@ dependencies = [
 polars = ["install-proper-polars"]
 
 [project.scripts]
-mmapped_df_convert = "mmapped_df.tools.mmapped_df_convert:main"
-mmapped_df_uncompress_tdf = "mmapped_df.tools.mmapped_df_uncompress_tdf:main"
-hdf_to_startrek = "mmapped_df.cli:hdf_to_startrek"
 
 [project.urls]
 homepage="https://github.com/michalsta/mmapped_df"
