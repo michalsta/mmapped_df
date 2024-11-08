@@ -225,6 +225,7 @@ def open_dataset_pl(path: Path | str, **kwargs):
     return pl.from_arrow(pa.table(open_dataset_pa(path, **kwargs)))
 
 
+# TODO: make obsolete
 class IndexedReader:
     def __init__(self, path: Path | str, index_col: str, **kwargs):
         self.dataset = open_dataset_dct(path, **kwargs)
@@ -307,6 +308,7 @@ class IndexedReader:
         return false_distr
 
 
+# TODO: make obsolete
 class SingleColReader:
     def __init__(self, path: Path | str, index_col: str, data_col: str, **kwargs):
         dataset = open_dataset_dct(path, **kwargs)
@@ -321,6 +323,7 @@ class SingleColReader:
         return self.last
 
 
+# TODO: make obsolete
 class GroupedIndex(IndexedReader):
     def __init__(self, indexed_column: pd.Series, dataset: pd.DataFrame):
         self.indexed = indexed_column.to_numpy()

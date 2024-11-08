@@ -1,7 +1,11 @@
+"""
+TODO: make obsolete
+"""
+from numba_progress import ProgressBar
+
 import numba
 import numpy as np
 import numpy.typing as npt
-from numba_progress import ProgressBar
 
 
 @numba.njit
