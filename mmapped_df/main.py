@@ -30,6 +30,11 @@ def str_to_schema(s: str):
     return pd.DataFrame(ret)
 
 
+def write_schema(schema: pd.DataFrame, path: Path | str):
+    with open(Path(path) / "schema.txt", "wt") as f:
+        f.write(schema_to_str(schema))
+
+
 def _read_schema_tbl(path: Path):
     with open(path / "schema.txt", "rt") as f:
         return str_to_schema(f.read())
@@ -166,7 +171,7 @@ class DatasetWriter:
 def open_dataset_dct(path: Path | str, read_write: bool = False, **kwargs):
     path = Path(path)
     df = _read_schema_tbl(path)
-
+    print(read_write)
     new_data = {}
 
     open_flags = os.O_RDWR if read_write else os.O_RDONLY

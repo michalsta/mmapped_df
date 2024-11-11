@@ -30,6 +30,7 @@ dependencies = [
 polars = ["install-proper-polars"]
 
 [project.scripts]
+copy_column = "mmapped_df.cli:copy_column"
 
 [project.urls]
 homepage="https://github.com/michalsta/mmapped_df"
