@@ -15,20 +15,32 @@ from mmapped_df.misc import shell
 @click.argument("path", type=Path)
 @click.argument("old_name", type=str)
 @click.argument("new_name", type=str)
-def copy_column(path: Path, old_name: str, new_name: str) -> None:
+@click.option("--ignore_errors", is_flag=True)
+def copy_column(
+    path: Path,
+    old_name: str,
+    new_name: str,
+    ignore_errors: bool = False,
+) -> None:
     """Copy a column in an existing memmapped data frame.
 
     Remark: on CoW file systems this will not make any data copies.
 
-    Arguments:
-        path (pathlib.Path): Path to the memmapped folder.
-        old_name (str): Name of the column to copy.
-        naw_name (str): Name for the newly copied data.
+    Arguments:\n
+        path (pathlib.Path): Path to the memmapped folder.\n
+        old_name (str): Name of the column to copy.\n
+        naw_name (str): Name for the newly copied data.\n
+        ignore_errors (bool): Finish script successfully whatever assumption not met.\n
     """
     schema = _read_schema_tbl(path.expanduser())
-    assert (
-        old_name in schema
-    ), f"Missing column `{old_name}` in table saved under `{path}`. Present are: {list(schema)}."
+
+    if not old_name in schema:
+        if not ignore_errors:
+            raise KeyError(
+                f"Missig column {old_name} in the table. Present are: {list(schema)}."
+            )
+        return
+
     assert (
         not new_name in schema
     ), f"Column `{old_name}` is already present in table saved under `{path}`."
