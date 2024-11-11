@@ -171,7 +171,6 @@ class DatasetWriter:
 def open_dataset_dct(path: Path | str, read_write: bool = False, **kwargs):
     path = Path(path)
     df = _read_schema_tbl(path)
-    print(read_write)
     new_data = {}
 
     open_flags = os.O_RDWR if read_write else os.O_RDONLY
