@@ -31,6 +31,7 @@ polars = ["install-proper-polars"]
 
 [project.scripts]
 copy_column = "mmapped_df.cli:copy_column"
+rename_column = "mmapped_df.cli:rename_column"
 
 [project.urls]
 homepage="https://github.com/michalsta/mmapped_df"
