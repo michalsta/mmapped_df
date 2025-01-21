@@ -135,6 +135,14 @@ class DatasetWriter:
             f.write(column.tobytes())
         self._reset_schema(like=self.schema)
 
+    def append_columns(self, **colname_to_values: npt.NDArray | pd.Series):
+        for col, vals in colname_to_values.items():
+            assert len(vals) == len(
+                self
+            ), f"Column `{col}` has {len(vals)} elements, and here we store columns with {len(self)} values. Submit values being either an np.array or pd.Series of the same size as the dataset."
+        for col, vals in colname_to_values.items():
+            self.append_column(colname=col, column=vals)
+
     def flush(self):
         for file in self.files:
             file.flush()
