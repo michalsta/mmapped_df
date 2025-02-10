@@ -40,6 +40,11 @@ def _read_schema_tbl(path: Path):
         return str_to_schema(f.read())
 
 
+def get_scheme(**kwargs: np.dtype):
+    """Turn mapping name -> np.dtype into what mmapped_df expects: a schema."""
+    return pd.DataFrame({c: pd.Series(dtype=dt) for c, dt in kwargs.items()})
+
+
 class DatasetWriter:
     def __init__(self, path: Path | str, append_ok: bool = False, overwrite_dir=False):
         self.files = None
