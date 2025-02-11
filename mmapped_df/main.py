@@ -99,6 +99,18 @@ class DatasetWriter:
         with open(self.path / "schema.txt", "wt") as f:
             f.write(schema_str)
 
+    @classmethod
+    def new(
+        cls,
+        path: Path | str,
+        append_ok: bool = False,
+        overwrite_dir=False,
+        **kwargs,
+    ):
+        res = cls(path, append_ok, overwrite_dir)
+        res._reset_schema(like=get_scheme(**kwargs))
+        return res
+
     def close(self):
         if self.files is not None:
             for file in self.files:
