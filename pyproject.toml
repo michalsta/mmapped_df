@@ -19,11 +19,8 @@ dependencies = [
     "numba_progress",
     "pandas",
     "tqdm",
-    "duckdb",
     "pyarrow",
-    "pandas_ops",
     "pytest",
-    "h5py",
 ]
 
 [project.optional-dependencies]

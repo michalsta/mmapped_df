@@ -1,5 +1,6 @@
 import mmap
 import os
+
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -12,7 +13,9 @@ import pandas as pd
 # import polars as pl
 import pyarrow as pa
 
-from .numba_helper import _apply_filter, count_falses_in_groups, mkindex
+from .numba_helper import _apply_filter
+from .numba_helper import count_falses_in_groups
+from .numba_helper import mkindex
 
 
 def schema_to_str(schema: pd.DataFrame):
@@ -107,6 +110,9 @@ class DatasetWriter:
         overwrite_dir=False,
         **kwargs,
     ):
+        assert (
+            len(kwargs) > 0
+        ), "Using `.new` requires you to specify the types of columns in advance and pass them in as `column=numpy.type` fashion, e.g. `scan=np.uint32`."
         res = cls(path, append_ok, overwrite_dir)
         res._reset_schema(like=get_scheme(**kwargs))
         return res
