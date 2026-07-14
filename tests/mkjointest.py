@@ -16,7 +16,7 @@ def gr():
 #        DW.append_df(df)
 
 with DatasetWriter("join_data_2") as DW:
-    DW._set_schema(like=pd.DataFrame({"idx": gr(), "modulo": gr()}))
+    DW._reset_schema(like=pd.DataFrame({"idx": gr(), "modulo": gr()}))
     start = 0
     for idx in tqdm(range(2_000)):
         DW.append(idx=idx, modulo=idx % 100)

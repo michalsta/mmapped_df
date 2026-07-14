@@ -28,7 +28,7 @@ def mkindex(indexed) -> tuple[npt.NDArray, npt.NDArray, np.uint32]:
 @numba.njit(parallel=True, boundscheck=True)
 def count_falses_in_groups(bools: npt.NDArray, index: npt.NDArray) -> npt.NDArray:
     assert len(bools) == index[-1], "Index does not describe bools well."
-    counts = np.zeros(dtype=np.uint32, shape=len(index) - 1)
+    counts = np.zeros(dtype=np.uint64, shape=len(index) - 1)
     for i in numba.prange(len(counts)):
         for j in range(index[i], index[i + 1]):
             counts[i] += 1 - bools[j]

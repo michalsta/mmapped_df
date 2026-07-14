@@ -145,7 +145,7 @@ class DatasetWriter:
             column = df[colname]
             assert colname == self.colnames[idx]
             assert (
-                column.values.dtype == self.dtypes[idx] or len(df) == 0
+                column.values.dtype == self.dtypes[idx]
             ), f"Types don't match: {column.values.dtype} vs {self.dtypes[idx]}"
             self.files[idx].write(column.values.tobytes())
 
@@ -216,6 +216,7 @@ def open_dataset_dct(path: Path | str, read_write: bool = False, **kwargs):
         col_dtype = df[column_name].values.dtype
         fd = os.open(path / f"{idx}.bin", open_flags)
         mmap_obj = mmap.mmap(fd, 0, prot=mmap_flags)
+        os.close(fd)
         new_data[column_name] = np.frombuffer(mmap_obj, dtype=col_dtype)
 
     return new_data
@@ -275,6 +276,10 @@ class IndexedReader:
             k: v[self.index[idx] : self.index[int(idx + 1)]]
             for k, v in self.dataset.items()
         }
+
+    def __iter__(self):
+        for idx in range(len(self)):
+            yield self[idx]
 
     def iter_nonempty(self):
         """The usual __iter__ protocol will iterate over all entries, incl. empty ones"""

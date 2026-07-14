@@ -44,7 +44,7 @@ def copy_column(
 
     assert (
         not new_name in schema
-    ), f"Column `{old_name}` is already present in table saved under `{path}`."
+    ), f"Column `{new_name}` is already present in table saved under `{path}`."
 
     schema[new_name] = schema[old_name]
     cols = list(schema.columns)
@@ -91,7 +91,7 @@ def rename_column(
 
     assert (
         not new_name in schema
-    ), f"Column `{old_name}` is already present in table saved under `{path}`."
+    ), f"Column `{new_name}` is already present in table saved under `{path}`."
 
     new_schema = schema.rename(columns={old_name: new_name})
     write_schema(new_schema, path)
