@@ -1,6 +1,7 @@
 """
 TODO: make obsolete
 """
+
 from numba_progress import ProgressBar
 
 import numba
@@ -16,6 +17,12 @@ def count1D(counts: npt.NDArray, xx: npt.NDArray) -> None:
 
 
 def mkindex(indexed) -> tuple[npt.NDArray, npt.NDArray, np.uint32]:
+    # count1D indexes `counts` with these values unchecked: a negative one
+    # writes out of bounds and corrupts memory.
+    if not np.issubdtype(indexed.dtype, np.integer):
+        raise TypeError(f"Index column must be of integer dtype, got {indexed.dtype}")
+    if len(indexed) > 0 and np.min(indexed) < 0:
+        raise ValueError(f"Index column contains negative values (min {np.min(indexed)})")
     last = np.uint64(np.max(indexed) + 1)
     counts = np.zeros(last, dtype=np.uint64)
     count1D(counts, indexed)
