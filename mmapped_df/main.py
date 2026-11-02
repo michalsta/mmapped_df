@@ -140,14 +140,20 @@ class DatasetWriter:
             return
         if self.files is None:
             self._reset_schema(like=df)
+        # Validate everything before writing anything: a partial write leaves
+        # columns of unequal lengths, i.e. a corrupted dataset.
+        if list(df.columns) != self.colnames:
+            raise ValueError(
+                f"DataFrame columns {list(df.columns)} do not match the dataset schema {self.colnames}"
+            )
+        for colname, dtype in zip(self.colnames, self.dtypes):
+            if df[colname].values.dtype != dtype:
+                raise TypeError(
+                    f"Column `{colname}` has dtype {df[colname].values.dtype}, the dataset schema has {dtype}"
+                )
         self.length += len(df)
         for idx, colname in enumerate(df):
-            column = df[colname]
-            assert colname == self.colnames[idx]
-            assert (
-                column.values.dtype == self.dtypes[idx]
-            ), f"Types don't match: {column.values.dtype} vs {self.dtypes[idx]}"
-            self.files[idx].write(column.values.tobytes())
+            self.files[idx].write(df[colname].values.tobytes())
 
     def append_column(self, colname: str, column: npt.NDArray | pd.Series):
         if isinstance(column, pd.Series):
@@ -199,7 +205,7 @@ class DatasetWriter:
             file.write(dat.tobytes())
 
 
-def open_dataset_dct(path: Path | str, read_write: bool = False, **kwargs):
+def open_dataset_dct(path: Path | str, read_write: bool = False):
     path = Path(path)
     df = _read_schema_tbl(path)
     new_data = {}
@@ -215,9 +221,18 @@ def open_dataset_dct(path: Path | str, read_write: bool = False, **kwargs):
     for idx, column_name in enumerate(df):
         col_dtype = df[column_name].values.dtype
         fd = os.open(path / f"{idx}.bin", open_flags)
-        mmap_obj = mmap.mmap(fd, 0, prot=mmap_flags)
-        os.close(fd)
-        new_data[column_name] = np.frombuffer(mmap_obj, dtype=col_dtype)
+        try:
+            if os.fstat(fd).st_size == 0:
+                # mmap refuses empty files; a 0-row column needs no mapping.
+                arr = np.empty(0, dtype=col_dtype)
+                arr.flags.writeable = read_write
+            else:
+                arr = np.frombuffer(
+                    mmap.mmap(fd, 0, prot=mmap_flags), dtype=col_dtype
+                )
+        finally:
+            os.close(fd)
+        new_data[column_name] = arr
 
     return new_data
 
