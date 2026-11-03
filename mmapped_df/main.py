@@ -335,11 +335,13 @@ class IndexedReader:
         new_path: Path | str,
         retain_decisions: npt.NDArray,
         progressbar_desc="Saving filtered events",
+        allow_vanishing_groups: bool = False,
     ):
         """
         Arguments:
             new_path (Path): Path to new filtered results.
             retain_decisions (npt.NDArray): an array of boolean values: True standing for retain, False for filter out.
+            allow_vanishing_groups (bool): if False (default), raise ValueError when a group that had entries loses all of them. Groups that were empty to begin with (gaps in the index column) never count.
 
         Returns:
             npt.NDArray:  distributoin of falses within each cluster.
@@ -349,9 +351,12 @@ class IndexedReader:
         from .numba_helper import _apply_filter, count_falses_in_groups
 
         false_distr = count_falses_in_groups(retain_decisions, self.index)
-        assert np.all(
-            false_distr < self.counts
-        ), "Some clusters entirely disappeared after the quadrupole interesection filter: that's like impossible."
+        if not allow_vanishing_groups:
+            vanished = np.flatnonzero((self.counts > 0) & (false_distr == self.counts))
+            if len(vanished) > 0:
+                raise ValueError(
+                    f"{len(vanished)} groups lost all their entries in the filter (first: {vanished[:10].tolist()}); pass allow_vanishing_groups=True if that is expected."
+                )
 
         index_after_filter = np.zeros(shape=len(self.index), dtype=self.index.dtype)
         index_after_filter[1:] = self.index[1:] - np.cumsum(false_distr)
