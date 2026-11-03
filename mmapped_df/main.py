@@ -173,13 +173,23 @@ class DatasetWriter:
     def append_column(self, colname: str, column: npt.NDArray | pd.Series):
         if isinstance(column, pd.Series):
             column = column.values
+        if colname in self.schema:
+            # Assigning would replace the schema entry while a new .bin file is
+            # written for it: the schema would no longer match the files.
+            raise ValueError(f"Column `{colname}` is already present in {self.path}")
         assert self.length == len(column)
-        self.schema[colname] = np.empty_like(column)
+        # A 0-length array: assigning the full-length column to the 0-row schema
+        # would make pandas grow the index, NaN-fill the existing columns and so
+        # turn their dtypes into float64.
+        self.schema[colname] = np.empty(0, dtype=column.dtype)
         with open(self.path / f"{len(self.files)}.bin", "xb") as f:
             f.write(column.tobytes())
         self._reset_schema(like=self.schema)
 
     def append_columns(self, **colname_to_values: npt.NDArray | pd.Series):
+        present = [col for col in colname_to_values if col in self.schema]
+        if present:
+            raise ValueError(f"Columns {present} are already present in {self.path}")
         for col, vals in colname_to_values.items():
             assert len(vals) == len(
                 self
