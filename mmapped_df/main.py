@@ -92,27 +92,60 @@ class DatasetWriter:
             for file, dt in zip(DW.files, DW.dtypes):
                 file.truncate(nrows * dt.itemsize)
 
+    @staticmethod
+    def _check_storable(like: pd.DataFrame) -> None:
+        """Only fixed-width numpy dtypes can be stored.
+
+        Checks the pandas dtype, not `.values.dtype`: the latter hides e.g. the
+        timezone of tz-aware datetimes, which would be silently dropped.
+        """
+        for colname in like:
+            dtype = like[colname].dtype
+            if (
+                not isinstance(dtype, np.dtype)
+                or dtype.hasobject
+                or dtype.itemsize == 0
+            ):
+                raise TypeError(
+                    f"Column `{colname}` has dtype {dtype}, which cannot be stored: only fixed-width numpy dtypes are supported"
+                )
+
     def _reset_schema(self, like: pd.DataFrame):
+        self._check_storable(like)
+        schema_str = schema_to_str(like)
+        schema = str_to_schema(schema_str)
+        for colname in like:
+            if colname not in schema or schema[colname].dtype != like[colname].dtype:
+                stored = schema[colname].dtype if colname in schema else None
+                raise TypeError(
+                    f"Column `{colname}`: dtype {like[colname].dtype} does not round-trip through schema.txt (reads back as {stored})"
+                )
         self.close()
         self.files = []
         self.colnames = []
         self.dtypes = []
-        schema_str = schema_to_str(like)
-        self.schema = str_to_schema(schema_str)
+        self.schema = schema
         lengths = []
         for idx, colname in enumerate(self.schema):
             file_path = self.path / f"{idx}.bin"
             self.files.append(open(file_path, "ab", buffering=10240))
             self.colnames.append(colname)
             self.dtypes.append(self.schema[colname].values.dtype)
-            lengths.append(file_path.stat().st_size / self.dtypes[-1].itemsize)
+            nrows, rest = divmod(file_path.stat().st_size, self.dtypes[-1].itemsize)
+            if rest != 0:
+                self.close()
+                raise RuntimeError(
+                    f"Corrupted dataset: size of {file_path} is not a multiple of the {self.dtypes[-1]} itemsize"
+                )
+            lengths.append(nrows)
 
         if not (lengths == [] or all(l == lengths[0] for l in lengths)):
+            self.close()
             raise RuntimeError(
                 f"Corrupted dataset: columns of unequal lengths: {self.path}"
             )
 
-        self.length = 0 if lengths == [] else int(lengths[0])
+        self.length = 0 if lengths == [] else lengths[0]
 
         with open(self.path / "schema.txt", "wt") as f:
             f.write(schema_str)
@@ -162,9 +195,9 @@ class DatasetWriter:
                 f"DataFrame columns {list(df.columns)} do not match the dataset schema {self.colnames}"
             )
         for colname, dtype in zip(self.colnames, self.dtypes):
-            if df[colname].values.dtype != dtype:
+            if df[colname].dtype != dtype:
                 raise TypeError(
-                    f"Column `{colname}` has dtype {df[colname].values.dtype}, the dataset schema has {dtype}"
+                    f"Column `{colname}` has dtype {df[colname].dtype}, the dataset schema has {dtype}"
                 )
         self.length += len(df)
         for idx, colname in enumerate(df):
