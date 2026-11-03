@@ -18,13 +18,12 @@ dependencies = [
     "numba",
     "numba_progress",
     "pandas",
-    "tqdm",
     "pyarrow",
-    "pytest",
 ]
 
 [project.optional-dependencies]
 polars = ["install-proper-polars"]
+test = ["pytest", "tqdm"]
 
 [project.scripts]
 copy_column = "mmapped_df.cli:copy_column"
