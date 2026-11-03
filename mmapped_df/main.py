@@ -283,9 +283,27 @@ def open_dataset(path: Path | str, **kwargs):
 
 
 def np_to_pa(np_arr):
-    """Convert Numpy array to Pyarrow one, sharing the same backing buffer"""
-    pyarrow_buf = pa.py_buffer(np_arr)
+    """Convert Numpy array to Pyarrow one, sharing the same backing buffer.
+
+    Raises TypeError for arrays whose memory Arrow cannot use as-is (e.g. bool,
+    which Arrow bit-packs, or datetime64[D], which Arrow reads as 32-bit date32)
+    rather than silently copying or misreading them.
+    """
     dtype = pa.from_numpy_dtype(np_arr.dtype)
+    try:
+        arrow_bits = dtype.bit_width
+    except ValueError:  # variable-width types (strings, bytes) have none
+        arrow_bits = None
+    if arrow_bits != np_arr.dtype.itemsize * 8:
+        raise TypeError(
+            f"Cannot share the buffer of a numpy {np_arr.dtype} array with Arrow zero-copy: "
+            f"Arrow's {dtype} uses {arrow_bits} bits per value, numpy {np_arr.dtype.itemsize * 8}. "
+            f"Convert explicitly (e.g. pyarrow.array(arr), which copies) or store the column "
+            f"as a compatible dtype (e.g. uint8 instead of bool)."
+        )
+    if not np_arr.flags.c_contiguous:
+        raise TypeError("Cannot share a non-contiguous numpy array with Arrow zero-copy")
+    pyarrow_buf = pa.py_buffer(np_arr)
     return pa.Array.from_buffers(
         type=dtype, length=len(np_arr), buffers=[None, pyarrow_buf], null_count=0
     )
