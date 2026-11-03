@@ -4,8 +4,6 @@ import os
 from pathlib import Path
 from types import SimpleNamespace
 
-from numba_progress import ProgressBar
-
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -13,9 +11,26 @@ import pandas as pd
 # import polars as pl
 import pyarrow as pa
 
-from .numba_helper import _apply_filter
-from .numba_helper import count_falses_in_groups
-from .numba_helper import mkindex
+# numba / numba_progress are imported lazily, only by the legacy readers below,
+# so that plain reading and writing does not pay for loading Numba.
+
+__all__ = [
+    "schema_to_str",
+    "str_to_schema",
+    "write_schema",
+    "get_scheme",
+    "DatasetWriter",
+    "open_dataset_dct",
+    "open_new_dataset_dct",
+    "open_dataset_simple_namespace",
+    "open_dataset",
+    "np_to_pa",
+    "open_dataset_pa",
+    "open_dataset_pl",
+    "IndexedReader",
+    "SingleColReader",
+    "GroupedIndex",
+]
 
 
 def schema_to_str(schema: pd.DataFrame):
@@ -281,6 +296,8 @@ class IndexedReader:
     def __init__(self, path: Path | str, index_col: str, **kwargs):
         self.dataset = open_dataset_dct(path, **kwargs)
         self.indexed = self.dataset[index_col]
+        from .numba_helper import mkindex
+
         self.index, self.counts, self.last = mkindex(self.indexed)
 
     def __getitem__(self, idx):
@@ -325,6 +342,9 @@ class IndexedReader:
         Returns:
             npt.NDArray:  distributoin of falses within each cluster.
         """
+        from numba_progress import ProgressBar
+
+        from .numba_helper import _apply_filter, count_falses_in_groups
 
         false_distr = count_falses_in_groups(retain_decisions, self.index)
         assert np.all(
@@ -369,6 +389,8 @@ class SingleColReader:
         dataset = open_dataset_dct(path, **kwargs)
         self.indexed = dataset[index_col]
         self.data = dataset[data_col]
+        from .numba_helper import mkindex
+
         self.index, _, self.last = mkindex(self.indexed)
 
     def __getitem__(self, idx):
@@ -383,4 +405,6 @@ class GroupedIndex(IndexedReader):
     def __init__(self, indexed_column: pd.Series, dataset: pd.DataFrame):
         self.indexed = indexed_column.to_numpy()
         self.dataset = {c: dataset[c].to_numpy() for c in dataset.columns}
+        from .numba_helper import mkindex
+
         self.index, self.counts, self.last = mkindex(self.indexed)
