@@ -232,7 +232,9 @@ def open_dataset_dct(path: Path | str, read_write: bool = False):
         # We're not on Windows, thank goodness
         pass
 
-    mmap_flags = mmap.PROT_READ | mmap.PROT_WRITE if read_write else mmap.PROT_READ
+    # `access=` rather than `prot=`: the latter does not exist on Windows.
+    # ACCESS_WRITE is a shared read-write mapping, ACCESS_READ a read-only one.
+    mmap_access = mmap.ACCESS_WRITE if read_write else mmap.ACCESS_READ
     for idx, column_name in enumerate(df):
         col_dtype = df[column_name].values.dtype
         fd = os.open(path / f"{idx}.bin", open_flags)
@@ -243,7 +245,7 @@ def open_dataset_dct(path: Path | str, read_write: bool = False):
                 arr.flags.writeable = read_write
             else:
                 arr = np.frombuffer(
-                    mmap.mmap(fd, 0, prot=mmap_flags), dtype=col_dtype
+                    mmap.mmap(fd, 0, access=mmap_access), dtype=col_dtype
                 )
         finally:
             os.close(fd)
