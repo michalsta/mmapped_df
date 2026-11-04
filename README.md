@@ -272,11 +272,16 @@ imported only when they are first used.
 git clone https://github.com/michalsta/mmapped_df
 cd mmapped_df
 pip install -e ".[test]"
+pytest
 ```
 
-`tests/` currently holds standalone scripts that generate and read sample
-datasets in the working directory, not yet a pytest suite.
+`examples/` holds standalone scripts that generate and read sample datasets
+in the working directory.
 
 ## Authors
 
 Michał Piotr Startek and Mateusz Krzysztof Łącki.
+
+## License
+
+MIT; see [LICENSE](LICENSE).
