@@ -1,97 +1,95 @@
-# %load_ext autoreload
-# %autoreload 2
+import subprocess
 from pathlib import Path
 
 import click
 
 from mmapped_df.main import _read_schema_tbl, write_schema
-from mmapped_df.misc import shell
 
-# path = Path("/home/matteo/clusters.startrek")
-# old_name = "ClusterID"
-# new_name = "OriginalClusterID"
+
+def _load_schema(path: Path, old_name: str, new_name: str):
+    """Read the schema and check the column names.
+
+    Returns None if `old_name` is missing and `ignore_errors` is set, so the
+    caller can exit successfully without doing anything.
+    """
+    schema = _read_schema_tbl(path)
+    if old_name not in schema:
+        raise click.UsageError(
+            f"Missing column `{old_name}` in the table saved under `{path}`. Present are: {list(schema)}."
+        )
+    if new_name in schema:
+        raise click.UsageError(
+            f"Column `{new_name}` is already present in the table saved under `{path}`."
+        )
+    return schema
+
+
+def _run(path: Path, old_name: str, new_name: str, ignore_errors: bool, action):
+    path = path.expanduser()
+    try:
+        schema = _load_schema(path, old_name, new_name)
+    except click.UsageError:
+        if ignore_errors:
+            return
+        raise
+    action(path, schema)
 
 
 @click.command(context_settings={"show_default": True})
 @click.argument("path", type=Path)
 @click.argument("old_name", type=str)
 @click.argument("new_name", type=str)
-@click.option("--ignore_errors", is_flag=True)
+@click.option(
+    "--ignore_errors",
+    is_flag=True,
+    help="Exit successfully, doing nothing, if OLD_NAME is missing or NEW_NAME already exists.",
+)
 def copy_column(
     path: Path,
     old_name: str,
     new_name: str,
     ignore_errors: bool = False,
 ) -> None:
-    """Copy a column in an existing memmapped data frame.
+    """Copy column OLD_NAME to a new column NEW_NAME in the dataset at PATH.
 
-    Remark: on CoW file systems this will not make any data copies.
-
-    Arguments:\n
-        path (pathlib.Path): Path to the memmapped folder.\n
-        old_name (str): Name of the column to copy.\n
-        naw_name (str): Name for the newly copied data.\n
-        ignore_errors (bool): Finish script successfully whatever assumption not met.\n
+    On copy-on-write file systems (btrfs, XFS, ...) the data is reflinked, not copied.
     """
-    schema = _read_schema_tbl(path.expanduser())
 
-    if not old_name in schema:
-        if not ignore_errors:
-            raise KeyError(
-                f"Missig column {old_name} in the table. Present are: {list(schema)}."
-            )
-        return
+    def action(path: Path, schema):
+        schema[new_name] = schema[old_name]
+        cols = list(schema.columns)
+        old_file = path / f"{cols.index(old_name)}.bin"
+        new_file = path / f"{cols.index(new_name)}.bin"
+        # Argument list, no shell: paths may contain spaces or metacharacters.
+        subprocess.run(
+            ["cp", "--reflink=auto", str(old_file), str(new_file)], check=True
+        )
+        write_schema(schema, path)
 
-    assert (
-        not new_name in schema
-    ), f"Column `{new_name}` is already present in table saved under `{path}`."
-
-    schema[new_name] = schema[old_name]
-    cols = list(schema.columns)
-    old_file = path / f"{cols.index(old_name)}.bin"
-    new_file = path / f"{cols.index(new_name)}.bin"
-
-    shell(f"cp --reflink=auto {old_file} {new_file}")
-    write_schema(schema, path)
+    _run(path, old_name, new_name, ignore_errors, action)
 
 
-# path = Path("/home/matteo/fragments.startrek")
-# old_name = "step"
-# new_name = "midia_cycle"
-# ignore_errors = False
 @click.command(context_settings={"show_default": True})
 @click.argument("path", type=Path)
 @click.argument("old_name", type=str)
 @click.argument("new_name", type=str)
-@click.option("--ignore_errors", is_flag=True)
+@click.option(
+    "--ignore_errors",
+    is_flag=True,
+    help="Exit successfully, doing nothing, if OLD_NAME is missing or NEW_NAME already exists.",
+)
 def rename_column(
     path: Path,
     old_name: str,
     new_name: str,
     ignore_errors: bool = False,
 ) -> None:
-    """Copy a column in an existing memmapped data frame.
+    """Rename column OLD_NAME to NEW_NAME in the dataset at PATH.
 
-    Remark: on CoW file systems this will not make any data copies.
-
-    Arguments:\n
-        path (pathlib.Path): Path to the memmapped folder.\n
-        old_name (str): Name of the column to copy.\n
-        naw_name (str): Name for the newly copied data.\n
-        ignore_errors (bool): Finish script successfully whatever assumption not met.\n
+    Only schema.txt is rewritten; no data is touched.
     """
-    schema = _read_schema_tbl(path.expanduser())
 
-    if not old_name in schema:
-        if not ignore_errors:
-            raise KeyError(
-                f"Missig column {old_name} in the table. Present are: {list(schema)}."
-            )
-        return
+    def action(path: Path, schema):
+        write_schema(schema.rename(columns={old_name: new_name}), path)
 
-    assert (
-        not new_name in schema
-    ), f"Column `{new_name}` is already present in table saved under `{path}`."
-
-    new_schema = schema.rename(columns={old_name: new_name})
-    write_schema(new_schema, path)
+    _run(path, old_name, new_name, ignore_errors, action)
